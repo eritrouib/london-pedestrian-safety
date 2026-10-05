@@ -246,6 +246,8 @@ def load_junctions(boundary, refresh):
     except ImportError:
         log("  ! osmnx not installed (pip install osmnx); skipping junctions")
         return None
+    # keep OSMnx's raw download cache inside data/ (ignored by git) instead of ./cache
+    ox.settings.cache_folder = str(RAW / "osm" / "cache")
     cache = RAW / "osm" / "london_drive.graphml"
     if cache.exists() and not refresh:
         log(f"  loading cached {cache.name}")

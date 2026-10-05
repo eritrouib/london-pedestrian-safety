@@ -11,3 +11,5 @@ osmnx>=2.0
 scipy>=1.11
 libpysal>=4.10
 esda>=2.5
+statsmodels>=0.14
+mgwr>=2.2

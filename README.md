@@ -11,7 +11,7 @@ A spatial analysis and interactive dashboard built entirely on open data and ope
 | 1 | Pedestrian casualties from DfT STATS19, cleaned and mapped | Done |
 | 2 | Boundaries, population, deprivation, street network and built environment | Done |
 | 3 | Hotspot analysis (network kernel density, Getis-Ord Gi*) and fair rates | Done |
-| 4 | Built environment model (negative binomial, geographically weighted) | Planned |
+| 4 | Built environment model (negative binomial, geographically weighted) | Done |
 | 5 | Access to care: network travel time to A&E and major trauma centres | Planned |
 | 6 | Interactive dashboard | Planned |
 | 7 | AI layer: plain-English questions answered by tested spatial queries | Planned |
@@ -78,6 +78,40 @@ Outputs `data/processed/london_hotspots.gpkg` and the figures below, plus an int
 
 ![Borough rankings change with the measure](figures/borough_rank_change.png)
 
+### Step 4: the built environment model
+
+```bash
+python scripts/04_model.py          # main models, a few seconds
+python scripts/04_model.py --gwr    # adds geographically weighted regression (20-60 minutes)
+```
+
+Negative binomial regression of pedestrian casualties per small area, with kilometres of road as the exposure, so effects are per km of road. Collision counts are over-dispersed (a few areas have very many), which is why negative binomial rather than Poisson is used; the script reports both for comparison.
+
+- **Model A** uses activity only: population density, stations, bus stops, pubs and bars.
+- **Model B** adds street design (major road share, junctions, crossings, signals, schools) and income deprivation.
+
+Comparing them shows which street features still matter once an area's busyness is accounted for. Both are fitted for all pedestrian casualties and for fatal + serious ones, plus separately for inner and outer London.
+
+Checks built in:
+
+- **Collinearity:** variables with a variance inflation factor above 10 (mostly duplicating others) are dropped and reported.
+- **Residual spatial pattern:** Moran's I on the model residuals.
+- **Deprivation:** the IoD income score is used rather than the full IMD, which includes a road injury indicator.
+- **Areas with more casualties than expected:** each small area is compared with what the model predicts for a place like it, with a Benjamini-Hochberg correction so that areas flagged are not just the extremes expected by chance among thousands.
+- **Tested on synthetic data with known effects:** the model recovered every planted effect within its confidence interval, dropped a deliberately duplicated variable, flagged no areas when none were planted and found planted high-risk areas.
+
+The optional geographically weighted Poisson regression maps where effects are stronger or weaker across London. It does not allow for over-dispersion, so it overstates significance; its maps are exploratory.
+
+Results are written to `results/` (coefficients, full statistical output, flagged areas) and the figures below.
+
+![Model effects](figures/model_effects.png)
+
+![Inner vs outer London](figures/inner_outer_effects.png)
+
+![Observed vs expected casualties](figures/excess_casualties.png)
+
+**Interpreting the results.** These are associations across areas, not causes. Some street features are placed *because* of collisions (crossings and signals are often added after injuries), and area-level relationships do not necessarily hold for individual streets or people (the ecological fallacy). The value of the model is in showing which features go with more injuries than an area's busyness alone would predict, and where to look more closely.
+
 ## Data
 
 | Dataset | Publisher | Licence |
@@ -98,4 +132,4 @@ Outputs `data/processed/london_hotspots.gpkg` and the figures below, plus an int
 
 ## Tools
 
-Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda), SciPy, DuckDB or PostGIS (planned), MapLibre or Leaflet for the dashboard.
+Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda, mgwr), SciPy, statsmodels, DuckDB or PostGIS (planned), MapLibre or Leaflet for the dashboard.
