@@ -1,6 +1,6 @@
 # London Pedestrian Safety
 
-Where are pedestrians hurt on London's roads, how does the built environment relate to it, and how far are those places from emergency care?
+Where do pedestrian collisions concentrate on London's roads, how does the built environment relate to them, and how far are those places from emergency care?
 
 A spatial analysis and interactive dashboard built entirely on open data and open-source tools, with a plain-English AI question-answering layer planned on top. It extends my thesis on pedestrian collisions and the built environment in Athens to London.
 
