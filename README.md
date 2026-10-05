@@ -4,6 +4,8 @@ Where are pedestrians hurt on London's roads, how does the built environment rel
 
 A spatial analysis and interactive dashboard built entirely on open data and open-source tools, with a plain-English AI question-answering layer planned on top. It extends my thesis on pedestrian collisions and the built environment in Athens to London.
 
+**[Open the interactive dashboard](https://eritrouib.github.io/london-pedestrian-safety/)**
+
 ## Status
 
 | Step | What | Status |
@@ -12,8 +14,8 @@ A spatial analysis and interactive dashboard built entirely on open data and ope
 | 2 | Boundaries, population, deprivation, street network and built environment | Done |
 | 3 | Hotspot analysis (network kernel density, Getis-Ord Gi*) and fair rates | Done |
 | 4 | Built environment model (negative binomial, geographically weighted) | Done |
-| 5 | Access to care: network travel time to A&E and major trauma centres | Planned |
-| 6 | Interactive dashboard | Planned |
+| 5 | Access to care: network travel time to A&E and major trauma centres | Done |
+| 6 | Interactive dashboard | Done |
 | 7 | AI layer: plain-English questions answered by tested spatial queries | Planned |
 
 ## Getting started
@@ -112,6 +114,45 @@ Results are written to `results/` (coefficients, full statistical output, flagge
 
 **Interpreting the results.** These are associations across areas, not causes. Some street features are placed *because* of collisions (crossings and signals are often added after injuries), and area-level relationships do not necessarily hold for individual streets or people (the ecological fallacy). The value of the model is in showing which features go with more injuries than an area's busyness alone would predict, and where to look more closely.
 
+### Step 5: access to emergency care
+
+```bash
+python scripts/05_access_to_care.py
+```
+
+Drive time along the street network from every pedestrian casualty to the nearest A&E department and to the nearest of London's four major trauma centres (The Royal London, St Mary's, King's College and St George's), where the most seriously injured are taken.
+
+- **Trauma centres** are located from their postcodes (postcodes.io) and stored in `config/major_trauma_centres.csv`.
+- **A&E departments** are hospitals tagged with an emergency department in OpenStreetMap, plus the trauma centres. The list used is saved to `results/ae_sites_from_osm.csv` for review; to correct it, copy it to `config/ae_sites.csv`, edit and re-run.
+- **Travel times** use OpenStreetMap speed limits (typical speeds by road type where missing) on the strongly connected drivable network, with a multi-source shortest-path search from the hospitals over the reversed network.
+
+Results: `results/access_by_borough.csv` and the figures below.
+
+![Access to trauma care](figures/access_to_trauma_care.png)
+
+![Share of serious casualties within X minutes](figures/access_curve.png)
+
+**Limitations.** Times assume free-flowing traffic, so real journeys at busy times take longer. They cover the journey from the scene to hospital only, not the ambulance's journey to the scene, and ignore London's Air Ambulance and local trauma units. OpenStreetMap's emergency tags may be incomplete, which is why the A&E list can be reviewed and overridden.
+
+### Step 6: interactive dashboard
+
+```bash
+python scripts/06_build_dashboard.py
+```
+
+Collects the results of steps 1–5, slims them for the web (shared borders simplified together so neighbouring areas still touch, coordinates rounded to about 1 m) and writes a self-contained site into `docs/`. Open `docs/index.html` to check it locally. Steps 4 and 5 are optional: their sections are left out if they haven't been run.
+
+The dashboard has:
+
+- a headline sentence that updates with the filters (severity, year, time of day, age, borough)
+- casualties by hour of the day
+- four map views of London's small areas: hot and cold spots, more casualties than expected, casualties per km², and drive time to trauma care
+- the most dangerous street stretches, individual casualties when zoomed in, and hospitals with A&E
+- a borough panel with rankings three ways, typical drive time to trauma care and the streets where serious injuries concentrate
+- the model's findings in plain language
+
+**Publishing:** push to GitHub, then in the repository go to *Settings → Pages*, choose *Deploy from a branch*, branch `main`, folder `/docs`. The dashboard appears at `https://<your-username>.github.io/london-pedestrian-safety/` within a few minutes. Re-run the script and push again to update it.
+
 ## Data
 
 | Dataset | Publisher | Licence |
@@ -120,6 +161,7 @@ Results are written to `results/` (coefficients, full statistical output, flagge
 | English Indices of Deprivation 2025 (File 7: scores, deciles, mid-2022 population) | Ministry of Housing, Communities and Local Government | Open Government Licence v3.0 |
 | Lower layer Super Output Areas (December 2021) boundaries, generalised | Office for National Statistics | Open Government Licence v3.0 (contains OS data) |
 | OpenStreetMap, Greater London extract and street network | OpenStreetMap contributors, via Geofabrik and OSMnx | Open Database Licence (ODbL) |
+| Hospital locations (major trauma centres by postcode) | postcodes.io (ONS Postcode Directory) | Open Government Licence v3.0 |
 
 ### Known limitations
 
@@ -132,4 +174,4 @@ Results are written to `results/` (coefficients, full statistical output, flagge
 
 ## Tools
 
-Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda, mgwr), SciPy, statsmodels, DuckDB or PostGIS (planned), MapLibre or Leaflet for the dashboard.
+Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda, mgwr), SciPy and statsmodels for the analysis; Leaflet for the dashboard. All open source.
