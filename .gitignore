@@ -1,0 +1,7 @@
+# data is downloaded by the scripts, not stored in the repo
+data/
+*.part
+__pycache__/
+.venv/
+.ipynb_checkpoints/
+cache/
