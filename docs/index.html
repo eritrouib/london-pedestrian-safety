@@ -117,6 +117,37 @@
   .zoomnote { position: absolute; z-index: 800; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--asphalt);
     color: var(--white); font-size: 13px; padding: 6px 12px; border-radius: 6px; display: none; }
 
+  /* ---------- time animation ---------- */
+  .row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .play { border: 1.5px solid var(--asphalt); background: var(--white); border-radius: 999px; padding: 3px 12px;
+    font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .play[aria-pressed="true"] { background: var(--asphalt); color: var(--white); }
+  .yearbadge { position: absolute; z-index: 800; left: 22px; bottom: 34px; font-family: var(--display); font-weight: 800;
+    font-size: 76px; line-height: 1; color: var(--asphalt); pointer-events: none; display: none;
+    text-shadow: 0 0 2px #fff, 0 0 8px #fff, 0 0 14px #fff; letter-spacing: -0.02em; }
+  .yearbadge small { display: block; font-family: var(--body); font-weight: 700; font-size: 15px; letter-spacing: 0; margin-top: 4px; }
+
+  /* ---------- spotlight ---------- */
+  .spot-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .spot-controls .seg { flex: 1 1 160px; }
+  .chip.spot-on { font-weight: 700; padding: 6px 14px; font-size: 14px; }
+  .chip.spot-on[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--asphalt); }
+  .spot-where { font-size: 14px; margin: 14px 0 0; }
+  .spot-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
+  .spot-stats div { background: var(--white); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .spot-stats b { display: block; font-family: var(--display); font-weight: 800; font-size: 25px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .spot-stats b.ksi { color: var(--injury); }
+  .spot-stats span { font-size: 12px; color: var(--muted); line-height: 1.25; display: block; }
+  .spot-note { font-size: 13.5px; margin: 8px 0 0; }
+  .mini { margin-top: 10px; }
+  .mini svg { width: 100%; display: block; }
+  .mini .cap { font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+  .spot-handle { width: 26px !important; height: 26px !important; margin: -13px 0 0 -13px !important; border-radius: 50%;
+    background: var(--amber); border: 3px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.45); cursor: grab; }
+  .spot-handle:active { cursor: grabbing; }
+  .spot-ctl button { width: 34px; height: 34px; border: 0; background: #fff; cursor: pointer; font-size: 19px; line-height: 34px; padding: 0; }
+  .spot-ctl button[aria-pressed="true"] { background: var(--amber); }
+
   @media (max-width: 820px) {
     body { grid-template-columns: 1fr; grid-template-rows: 56vh auto; }
     #map { grid-column: 1; grid-row: 1; height: 56vh; }
@@ -127,7 +158,7 @@
 </style>
 </head>
 <body>
-<main id="map" aria-label="Map of pedestrian casualties in London"><div class="zoomnote" id="zoomnote">Zoom in to see individual casualties</div></main>
+<main id="map" aria-label="Map of pedestrian casualties in London"><div class="zoomnote" id="zoomnote">Zoom in to see individual casualties</div><div class="yearbadge" id="yearbadge" aria-live="polite"></div></main>
 
 <aside id="panel">
   <header>
@@ -145,7 +176,7 @@
       <button data-v="ksi" aria-pressed="false">Killed or seriously injured</button>
       <button data-v="fatal" aria-pressed="false">Killed</button>
     </div>
-    <h3>Year</h3>
+    <div class="row-head"><h3>Year</h3><button type="button" class="play" id="play" aria-pressed="false">&#9654; Play the years</button></div>
     <div class="chips" id="years" role="group" aria-label="Years"></div>
     <h3>Time of day</h3>
     <div class="chips" id="tod" role="group" aria-label="Time of day">
@@ -166,6 +197,20 @@
     <h3>By hour of the day</h3>
     <div class="hours"><svg id="hourchart" viewBox="0 0 240 60" preserveAspectRatio="none" role="img" aria-label="Casualties by hour of day"></svg>
       <div class="axis"><span>midnight</span><span>6am</span><span>noon</span><span>6pm</span><span>11pm</span></div></div>
+  </section>
+
+  <section id="spotsec">
+    <h2>Look closer</h2>
+    <p class="hint">Shine a spotlight on any place in London. Drag the amber handle, or click the map to move it.</p>
+    <div class="spot-controls">
+      <button type="button" class="chip spot-on" id="spot-toggle" aria-pressed="false">&#9678; Spotlight</button>
+      <div class="seg" id="spot-r" role="group" aria-label="Spotlight radius">
+        <button data-v="250" aria-pressed="false">250 m</button>
+        <button data-v="500" aria-pressed="true">500 m</button>
+        <button data-v="1000" aria-pressed="false">1 km</button>
+      </div>
+    </div>
+    <div id="spotbody"></div>
   </section>
 
   <section id="layers">
@@ -308,7 +353,7 @@
     return { fillColor: fill, fillOpacity: 0.72, color: line, weight: w, opacity: 1 };
   }
   var areas = L.geoJSON(D.lsoa, { pane: "areas", renderer: canvas, style: areaStyle,
-    onEachFeature: function (f, lyr) { lyr.on("click", function (e) { areaPopup(f, e.latlng); }); } }).addTo(map);
+    onEachFeature: function (f, lyr) { lyr.on("click", function (e) { if (SPOT.on) return; areaPopup(f, e.latlng); }); } }).addTo(map);
   var outlines = L.geoJSON(D.boroughs, { pane: "outlines", interactive: false,
     style: { color: "#4A5359", weight: 0.9, fill: false, opacity: 0.7 } }).addTo(map);
   var boroughLayer = {};
@@ -389,21 +434,31 @@
   var SEV_COL = ["#22272B", "#B3261E", "#6E8597"];
   var SEV_NAME = ["Killed", "Seriously injured", "Slightly injured"];
   var current = [];
+  function pointPopup(i) {
+    var s = C.sev[i];
+    return '<div class="pop"><div class="pop-t">' + SEV_NAME[s] + '</div><div class="pop-s">' + C.year[i] +
+      (C.hour[i] >= 0 ? ", around " + String(C.hour[i]).padStart(2, "0") + ":00" : "") +
+      (C.age[i] >= 0 ? ", aged " + C.age[i] : "") + "</div>" +
+      (C.mt ? "<table><tr><td>Drive to trauma centre</td><td>" + num(C.mt[i], 0) + " min</td></tr></table>" : "") + "</div>";
+  }
+  function stopClick(e) { L.DomEvent.stopPropagation(e); }
   function drawPoints() {
     pointLayer.clearLayers();
-    var on = el("t-points").checked, near = map.getZoom() >= 13;
-    el("zoomnote").style.display = on && !near ? "block" : "none";
-    if (!on || !near) return;
+    var want = el("t-points").checked, near = map.getZoom() >= 13;
+    var spotOn = !!(SPOT && SPOT.on);   // drawPoints can run before the spotlight is set up
+    el("zoomnote").style.display = want && !near && !playing && !spotOn ? "block" : "none";
+    var showView = want && near;
+    if (!showView && !playing && !spotOn) return;
     var b = map.getBounds().pad(0.2);
     current.forEach(function (i) {
-      if (!b.contains([C.lat[i], C.lon[i]])) return;
-      var s = C.sev[i];
-      L.circleMarker([C.lat[i], C.lon[i]], { pane: "points", renderer: canvas, radius: s === 2 ? 3 : 4.5, weight: 1, color: "#FFFFFF",
-        fillColor: SEV_COL[s], fillOpacity: 0.92 })
-        .bindPopup('<div class="pop"><div class="pop-t">' + SEV_NAME[s] + '</div><div class="pop-s">' + C.year[i] +
-          (C.hour[i] >= 0 ? ", around " + String(C.hour[i]).padStart(2, "0") + ":00" : "") +
-          (C.age[i] >= 0 ? ", aged " + C.age[i] : "") + "</div>" +
-          (C.mt ? "<table><tr><td>Drive to trauma centre</td><td>" + num(C.mt[i], 0) + " min</td></tr></table>" : "") + "</div>")
+      var inSpot = spotOn && SPOT.flag[i] === 1;
+      var ll = [C.lat[i], C.lon[i]];
+      if (!inSpot && !((playing || showView) && b.contains(ll))) return;
+      var s = C.sev[i], small = !inSpot && !near;
+      L.circleMarker(ll, { pane: "points", renderer: canvas, radius: small ? (s === 2 ? 1.7 : 2.8) : (s === 2 ? 3 : 4.5),
+        weight: small ? 0 : 1, color: "#FFFFFF", fillColor: SEV_COL[s], fillOpacity: small ? 0.8 : 0.92 })
+        .bindPopup(function () { return pointPopup(i); })
+        .on("click", stopClick)
         .addTo(pointLayer);
     });
   }
@@ -535,12 +590,196 @@
     drawEffects();
   }
 
+  // ---------- spotlight ----------
+  var SPOT = { on: false, r: 500, c: null, flag: new Uint8Array(N) };
+  map.createPane("mask").style.zIndex = 450;
+  map.getPane("mask").style.pointerEvents = "none";
+  map.createPane("spot").style.zIndex = 490;
+  var maskRenderer = L.svg({ pane: "mask", padding: 1 });
+  var WORLD = [[85, -180], [85, 180], [-85, 180], [-85, -180]];
+  var mask = L.polygon([WORLD], { renderer: maskRenderer, stroke: false, fillColor: "#22272B", fillOpacity: 0.55, interactive: false });
+  var ring = L.circle([51.5, -0.1], { renderer: maskRenderer, radius: SPOT.r, color: "#E8A317", weight: 3, fill: false, interactive: false });
+  var handle = L.marker([51.5, -0.1], { pane: "spot", draggable: true, autoPan: true, title: "Drag the spotlight",
+    icon: L.divIcon({ className: "spot-handle", iconSize: [26, 26] }) });
+  var KM_LAT = 110574, KM_LON = 111320;
+  function circleRing(c, r) {
+    var pts = [], cos = Math.cos(c.lat * Math.PI / 180);
+    for (var a = 0; a < 360; a += 5) {
+      var t = a * Math.PI / 180;
+      pts.push([c.lat + r * Math.cos(t) / KM_LAT, c.lng + r * Math.sin(t) / (KM_LON * cos)]);
+    }
+    return pts;
+  }
+  function computeSpot() {
+    SPOT.flag = new Uint8Array(N);
+    if (!SPOT.on) return [];
+    var lat0 = SPOT.c.lat, lon0 = SPOT.c.lng, cos = Math.cos(lat0 * Math.PI / 180), r2 = SPOT.r * SPOT.r, inside = [];
+    current.forEach(function (i) {
+      var dy = (C.lat[i] - lat0) * KM_LAT, dx = (C.lon[i] - lon0) * KM_LON * cos;
+      if (dx * dx + dy * dy <= r2) { SPOT.flag[i] = 1; inside.push(i); }
+    });
+    return inside;
+  }
+  function bars(values, labels, colour, height, highlight) {
+    var n = values.length, w = 240 / n, max = Math.max.apply(null, values) || 1, svg = "";
+    values.forEach(function (v, j) {
+      var h = (height - (labels ? 14 : 2)) * v / max, y = height - (labels ? 14 : 0) - h;
+      svg += '<rect x="' + (j * w + 1) + '" y="' + y + '" width="' + (w - 2) + '" height="' + h + '" fill="' +
+        (highlight && highlight(j) ? colour : "#9AA6AE") + '"><title>' + (labels ? labels[j] : j + ":00") + ": " + v + "</title></rect>";
+      if (labels) svg += '<text x="' + (j * w + w / 2) + '" y="' + (height - 2) + '" font-size="10" text-anchor="middle" fill="#5D676E">' +
+        labels[j] + "</text>";
+    });
+    return '<svg viewBox="0 0 240 ' + height + '" preserveAspectRatio="none" style="height:' + height + 'px" aria-hidden="true">' + svg + "</svg>";
+  }
+  function drawSpot() {
+    var body = el("spotbody");
+    var inside = computeSpot();
+    if (!SPOT.on) { body.innerHTML = ""; return; }
+    var k = 0, f = 0, kids = 0, mt = [], byYear = META.years.map(function () { return 0; }), byHour = new Array(24).fill(0);
+    inside.forEach(function (i) {
+      if (C.sev[i] <= 1) { k++; if (C.mt && C.mt[i] != null) mt.push(C.mt[i]); }
+      if (C.sev[i] === 0) f++;
+      if (C.age[i] >= 0 && C.age[i] < 16) kids++;
+      var yi = META.years.indexOf(C.year[i]); if (yi > -1) byYear[yi]++;
+      if (C.hour[i] >= 0) byHour[C.hour[i]]++;
+    });
+    var rLabel = SPOT.r >= 1000 ? (SPOT.r / 1000) + " km" : SPOT.r + " m";
+    var ys = Array.from(S.years).sort();
+    var when = ys.length === META.years.length ? "" : (ys.length === 1 ? " in " + ys[0] : " in the selected years");
+    var html = '<p class="spot-where">Within <b>' + rLabel + "</b> of this spot" + when + ":</p>";
+    if (!inside.length) {
+      body.innerHTML = html + '<p class="spot-note">No pedestrian casualties match your selection here.</p>';
+      return;
+    }
+    html += '<div class="spot-stats"><div><b>' + fmt.format(inside.length) + "</b><span>pedestrian casualties</span></div>" +
+      '<div><b class="ksi">' + fmt.format(k) + "</b><span>killed or seriously injured</span></div>" +
+      '<div><b class="ksi">' + fmt.format(f) + "</b><span>" + (f === 1 ? "death" : "deaths") + "</span></div></div>";
+    var notes = [];
+    if (kids) notes.push(fmt.format(kids) + (kids === 1 ? " was a child" : " were children") + " under 16.");
+    var m = median(mt);
+    if (m != null && k >= 3) notes.push("Typical drive from here to a major trauma centre: <b>" + num(m, 0) + " min</b>.");
+    var named = {};
+    (D.streets || []).forEach(function (st) {
+      if (!st.n || !st.c.length) return;
+      var c0 = st.c[0], cos = Math.cos(SPOT.c.lat * Math.PI / 180);
+      var dy = (c0[0] - SPOT.c.lat) * KM_LAT, dx = (c0[1] - SPOT.c.lng) * KM_LON * cos;
+      if (dx * dx + dy * dy <= SPOT.r * SPOT.r && (!named[st.n] || named[st.n] < st.d)) named[st.n] = st.d;
+    });
+    var top = Object.keys(named).sort(function (a, b) { return named[b] - named[a]; }).slice(0, 3);
+    if (top.length) notes.push("Where serious injuries concentrate here: " + top.map(esc).join(", ") + ".");
+    if (notes.length) html += '<p class="spot-note">' + notes.join(" ") + "</p>";
+    if (META.years.length > 1) {
+      html += '<div class="mini"><div class="cap">By year</div>' +
+        bars(byYear, META.years, "#22272B", 58, function (j) { return S.years.has(META.years[j]); }) + "</div>";
+    }
+    var peak = byHour.indexOf(Math.max.apply(null, byHour));
+    html += '<div class="mini"><div class="cap">By hour of the day' + (inside.length >= 10 ? " (busiest: around " +
+      String(peak).padStart(2, "0") + ":00)" : "") + "</div>" + bars(byHour, null, "#B3261E", 40, function () { return true; }) +
+      '<div class="axis" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">' +
+      "<span>midnight</span><span>noon</span><span>11pm</span></div></div>";
+    body.innerHTML = html;
+  }
+  var spotRaf = null;
+  function refreshSpot() {
+    if (spotRaf) return;
+    spotRaf = requestAnimationFrame(function () { spotRaf = null; drawSpot(); drawPoints(); });
+  }
+  function placeSpot(ll) {
+    SPOT.c = L.latLng(ll);
+    handle.setLatLng(SPOT.c);
+    ring.setLatLng(SPOT.c).setRadius(SPOT.r);
+    mask.setLatLngs([WORLD, circleRing(SPOT.c, SPOT.r)]);
+    refreshSpot();
+  }
+  var SPOT_ZOOM = { 250: 16, 500: 15, 1000: 14 };
+  var spotBtns = [el("spot-toggle")];
+  function setSpot(on) {
+    SPOT.on = on;
+    spotBtns.forEach(function (b) { b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    if (on) {
+      if (!SPOT.c || !map.getBounds().contains(SPOT.c)) SPOT.c = map.getCenter();
+      mask.addTo(map); ring.addTo(map); handle.addTo(map);
+      map.closePopup();
+      placeSpot(SPOT.c);
+      if (map.getZoom() < SPOT_ZOOM[SPOT.r] - 1) {
+        REDUCED ? map.setView(SPOT.c, SPOT_ZOOM[SPOT.r]) : map.flyTo(SPOT.c, SPOT_ZOOM[SPOT.r], { duration: 0.9 });
+      }
+    } else {
+      [mask, ring, handle].forEach(function (l) { if (map.hasLayer(l)) map.removeLayer(l); });
+      drawSpot(); drawPoints();
+    }
+  }
+  handle.on("drag", function () { placeSpot(handle.getLatLng()); });
+  map.on("click", function (e) { if (SPOT.on) placeSpot(e.latlng); });
+  el("spot-toggle").addEventListener("click", function () { setSpot(!SPOT.on); });
+  el("spot-r").querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      SPOT.r = +b.dataset.v;
+      el("spot-r").querySelectorAll("button").forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+      if (SPOT.on) placeSpot(SPOT.c);
+    });
+  });
+  var SpotControl = L.Control.extend({
+    options: { position: "topright" },
+    onAdd: function () {
+      var div = L.DomUtil.create("div", "leaflet-bar spot-ctl");
+      div.innerHTML = '<button type="button" title="Spotlight: look closer at one place" aria-label="Spotlight" aria-pressed="false">&#9678;</button>';
+      L.DomEvent.disableClickPropagation(div);
+      spotBtns.push(div.firstChild);
+      div.firstChild.addEventListener("click", function () { setSpot(!SPOT.on); });
+      return div;
+    }
+  });
+  map.addControl(new SpotControl());
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && SPOT.on) setSpot(false); });
+
+  // ---------- playing through the years ----------
+  var playing = false, playTimer = null, savedYears = null;
+  var playBtn = el("play"), badge = el("yearbadge");
+  function syncYearChips() {
+    el("years").querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-pressed", S.years.has(+b.textContent) ? "true" : "false");
+    });
+  }
+  function stopPlay(restore) {
+    clearTimeout(playTimer);
+    if (!playing) return;
+    playing = false;
+    playBtn.setAttribute("aria-pressed", "false");
+    playBtn.innerHTML = "&#9654; Play the years";
+    badge.style.display = "none";
+    if (restore && savedYears) S.years = savedYears;
+    syncYearChips();
+    update();
+  }
+  function startPlay() {
+    savedYears = new Set(S.years);
+    playing = true;
+    playBtn.setAttribute("aria-pressed", "true");
+    playBtn.innerHTML = "&#9632; Stop";
+    var ys = META.years.slice(), k = 0;
+    (function step() {
+      if (!playing) return;
+      if (k >= ys.length) { stopPlay(true); return; }
+      var y = ys[k++];
+      S.years = new Set([y]);
+      syncYearChips();
+      update();
+      var n = current.length;
+      badge.innerHTML = y + "<small>" + fmt.format(n) + (S.sev === "fatal" ? " killed" : S.sev === "ksi" ? " killed or seriously injured" : " casualties") + "</small>";
+      badge.style.display = "block";
+      playTimer = setTimeout(step, 1900);
+    })();
+  }
+  playBtn.addEventListener("click", function () { playing ? stopPlay(true) : startPlay(); });
+
   // ---------- filters ----------
   var yearsEl = el("years");
   META.years.forEach(function (y) {
     var b = document.createElement("button");
     b.className = "chip"; b.textContent = y; b.setAttribute("aria-pressed", "true");
     b.addEventListener("click", function () {
+      if (playing) stopPlay(true);
       if (S.years.has(y) && S.years.size > 1) S.years.delete(y); else S.years.add(y);
       b.setAttribute("aria-pressed", S.years.has(y) ? "true" : "false");
       update();
@@ -563,6 +802,7 @@
     lede(current);
     hourChart(S.borough ? current.filter(function (i) { return BOROUGHS[C.b[i]] === S.borough; }) : current);
     boroughPanel(current);
+    drawSpot();
     drawPoints();
   }
 

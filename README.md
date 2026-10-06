@@ -146,6 +146,8 @@ The dashboard has:
 
 - a headline sentence that updates with the filters (severity, year, time of day, age, borough)
 - casualties by hour of the day
+- a **spotlight**: a circle (250 m, 500 m or 1 km) you can drag anywhere, which dims the rest of the map and summarises the casualties inside it (killed or seriously injured, children, by year, by hour, typical drive to trauma care, and the street stretches where serious injuries concentrate)
+- **Play the years**: steps through 2021–2025, one year at a time, with the casualties of each year on the map
 - four map views of London's small areas: hot and cold spots, more casualties than expected, casualties per km², and drive time to trauma care
 - the most dangerous street stretches, individual casualties when zoomed in, and hospitals with A&E
 - a borough panel with rankings three ways, typical drive time to trauma care and the streets where serious injuries concentrate
