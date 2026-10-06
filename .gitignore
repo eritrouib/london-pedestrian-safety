@@ -1,5 +1,5 @@
 # data is downloaded by the scripts, not stored in the repo
-data/
+/data/
 # OSMnx download cache
 cache/
 *.part
