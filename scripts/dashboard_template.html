@@ -141,6 +141,12 @@
   .askex button:hover { border-color: var(--asphalt); }
   .ask-unavailable { margin: 12px 0 0; padding: 10px 12px; background: #FFF4DB; border: 1px solid #E8C779; border-radius: 6px; font-size: 14px; }
   .ask-thinking { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  .dl { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; border: 1.5px solid var(--asphalt); background: var(--white);
+    border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .dl:hover { background: var(--asphalt); color: var(--white); }
+  .dl-note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .support { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+  .support a, .ask-unavailable a { color: var(--asphalt); font-weight: 700; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
   .ans { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
   .ans-read { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
   .ans-read i { color: var(--asphalt); font-style: normal; font-weight: 700; }
@@ -219,6 +225,7 @@
     </form>
     <div class="askex" id="askex"></div>
     <div id="askout" aria-live="polite"></div>
+    <p class="support" id="support" hidden></p>
   </section>
 
   <section id="filters">
@@ -356,6 +363,43 @@
     var m = v.length >> 1;
     return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
   }
+
+  // ---------- downloads ----------
+  // Saves exactly the casualties being looked at as a CSV file, in the visitor's browser.
+  var DL = {};
+  var SEV_TXT = ["Fatal", "Serious", "Slight"];
+  function dlButton(key, idx, what) {
+    DL[key] = { idx: idx, name: what };
+    return '<button type="button" class="dl" data-dl="' + key + '">&#8681; Download ' + fmt.format(idx.length) +
+      (idx.length === 1 ? " casualty" : " casualties") + " (CSV)</button>" +
+      '<span class="dl-note">Source: Department for Transport, STATS19 (Open Government Licence v3.0).</span>';
+  }
+  function slug(t) { return String(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40); }
+  function downloadCsv(key) {
+    var d = DL[key]; if (!d || !d.idx.length) return;
+    var head = ["year", "hour", "severity", "age", "borough", "latitude", "longitude"];
+    if (C.mt) head.push("mins_to_major_trauma_centre");
+    if (C.ae) head.push("mins_to_ae");
+    var q = function (v) { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var lines = [head.join(",")];
+    d.idx.forEach(function (i) {
+      var row = [C.year[i], C.hour[i] >= 0 ? C.hour[i] : "", SEV_TXT[C.sev[i]], C.age[i] >= 0 ? C.age[i] : "",
+        C.b[i] >= 0 ? BOROUGHS[C.b[i]] : "", C.lat[i], C.lon[i]];
+      if (C.mt) row.push(C.mt[i]);
+      if (C.ae) row.push(C.ae[i]);
+      lines.push(row.map(q).join(","));
+    });
+    var blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "london-pedestrian-casualties_" + slug(d.name) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-dl]");
+    if (b) downloadCsv(b.dataset.dl);
+  });
 
   // ---------- map ----------
   var map = L.map("map", { zoomControl: false, preferCanvas: true, minZoom: 9 });
@@ -602,6 +646,8 @@
       html += "<h3>Where serious injuries concentrate</h3><ul class='streets-list'>" + tops.map(function (t, i) {
         return '<li><button data-i="' + i + '">' + esc(t.n) + "</button></li>"; }).join("") + "</ul>";
     }
+    var inB = sel.filter(function (i) { return BOROUGHS[C.b[i]] === S.borough; });
+    if (inB.length) html += dlButton("borough", inB, S.borough);
     body.innerHTML = html;
     body.querySelectorAll(".streets-list button").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -730,6 +776,7 @@
       String(peak).padStart(2, "0") + ":00)" : "") + "</div>" + bars(byHour, null, "#B3261E", 40, function () { return true; }) +
       '<div class="axis" style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">' +
       "<span>midnight</span><span>noon</span><span>11pm</span></div></div>";
+    html += dlButton("spot", inside, "within-" + SPOT.r + "m-of-" + SPOT.c.lat.toFixed(4) + "-" + SPOT.c.lng.toFixed(4));
     body.innerHTML = html;
   }
   var spotRaf = null;
@@ -878,6 +925,16 @@
     "What street features go with more casualties?"
   ];
   var askOut = el("askout"), askQ = el("askq"), askBtn = el("askbtn");
+  // optional "buy me a coffee" link: set once with 06_build_dashboard.py --support-url
+  var SUPPORT = /^https:\/\//.test(META.support_url || "") ? META.support_url : "";
+  var supportLink = SUPPORT ? '<a href="' + esc(SUPPORT) + '" target="_blank" rel="noopener">buy me a coffee &#9749;</a>' : "";
+  if (SUPPORT) {
+    el("support").innerHTML = "Each question costs a little to answer. If you find this useful, you can " + supportLink + " to help keep it running.";
+    el("support").hidden = false;
+  }
+  function withSupport(msg, key) {
+    return SUPPORT && key !== "busy" ? msg + " If you'd like to help keep it running, you can " + supportLink + "." : msg;
+  }
   EXAMPLES.forEach(function (q) {
     var b = document.createElement("button");
     b.type = "button"; b.textContent = q;
@@ -888,6 +945,7 @@
     askQ.disabled = true; askBtn.disabled = true;
     el("askex").querySelectorAll("button").forEach(function (b) { b.disabled = true; });
     askOut.innerHTML = '<p class="ask-unavailable">' + UNAVAILABLE + "</p>";
+    el("support").hidden = true;
   }
   el("askform").addEventListener("submit", function (e) { e.preventDefault(); ask(askQ.value); });
 
@@ -997,6 +1055,7 @@
     var res = { text: "", list: "", note: "", after: null, n: 0 };
     var sel = pick(q, geo);
     res.n = sel.length;
+    res.idx = q.task === "by_borough" ? pick(q, geo, true) : q.task === "model_findings" ? [] : sel;
     var where = geo ? " within " + (q.radius_m >= 1000 ? q.radius_m / 1000 + " km" : q.radius_m + " m") + " of " + esc(geo.label)
       : q.boroughs.length === 1 ? " in " + esc(q.boroughs[0]) : q.boroughs.length > 1 ? " in the " + q.boroughs.length + " boroughs" : " in London";
     var ys = q.years.length ? q.years : META.years;
@@ -1159,7 +1218,7 @@
       body: JSON.stringify({ question: question, years: META.years }) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
-        if (!res.ok || !res.j.query) { showMessage(AI_MESSAGES[res.j.error] || UNAVAILABLE); return; }
+        if (!res.ok || !res.j.query) { showMessage(withSupport(AI_MESSAGES[res.j.error] || UNAVAILABLE, res.j.error)); return; }
         var q = clean(res.j.query);
         if (!q.answerable) {
           showMessage(esc(q.reason || "The data can't answer that one.") + " Try one of the example questions.", "ask-thinking");
@@ -1178,6 +1237,7 @@
             '<p class="ans-text">' + r.text + "</p>" + r.list +
             (r.note ? '<p class="ans-note">' + r.note + "</p>" : "") +
             (mapNotes.length ? '<p class="ans-note">The map shows the closest match; the ' + mapNotes.join(" and ") + " filter is applied in this answer only.</p>" : "") +
+            (r.idx && r.idx.length ? dlButton("answer", r.idx, q.interpretation || question) : "") +
             '<div class="ans-foot"><span>' + (r.n != null ? "Computed from " + fmt.format(r.n) + " police-recorded casualties." : "From the model in step 4 of the analysis.") +
             '</span><button type="button" id="ans-clear">Clear</button></div></div>';
           askOut.innerHTML = html;
@@ -1186,7 +1246,7 @@
           el("ans-clear").addEventListener("click", function () { askOut.innerHTML = ""; askQ.value = ""; askQ.focus(); });
         });
       })
-      .catch(function () { showMessage(UNAVAILABLE); })
+      .catch(function () { showMessage(withSupport(UNAVAILABLE, "unavailable")); })
       .then(function () { clearTimeout(timer); AI.busy = false; askBtn.disabled = false; });
   }
 

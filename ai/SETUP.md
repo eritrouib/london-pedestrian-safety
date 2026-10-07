@@ -60,6 +60,17 @@ git push
 
 The address is saved in `config/ai_endpoint.txt`, so later rebuilds remember it. After a minute, open the dashboard, press **Ctrl + F5** and try an example question.
 
+## Optional: a "buy me a coffee" link
+
+Visitors can chip in towards the running cost. When set, a short line appears under the Ask box, and in the messages shown when the assistant is out of credit or has hit its limits.
+
+1. Create a page at **buymeacoffee.com** (or a similar service such as Ko-fi). You'll get a link like `https://buymeacoffee.com/yourname`.
+2. Once:
+   ```
+   python scripts/06_build_dashboard.py --support-url https://buymeacoffee.com/yourname
+   ```
+   It's saved in `config/support_url.txt`. Commit and push as usual.
+
 ## Day to day
 
 - **Turn it off instantly:** delete the `ANTHROPIC_API_KEY` secret in Cloudflare. Visitors see the "unavailable" message.

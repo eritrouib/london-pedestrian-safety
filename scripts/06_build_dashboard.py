@@ -10,6 +10,7 @@ Usage (from the project folder):
     python scripts/06_build_dashboard.py
     python scripts/06_build_dashboard.py --repo https://github.com/you/london-pedestrian-safety
     python scripts/06_build_dashboard.py --ai-url https://your-relay.workers.dev   (once; remembered)
+    python scripts/06_build_dashboard.py --support-url https://buymeacoffee.com/you (once; remembered)
 
 Outputs:
     docs/index.html     the dashboard (open it directly, or via GitHub Pages)
@@ -122,6 +123,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", help="link to the GitHub repository, shown on the page")
     ap.add_argument("--ai-url", help="address of your AI relay (Cloudflare Worker); saved to config/ai_endpoint.txt")
+    ap.add_argument("--support-url", help="your Buy Me a Coffee (or similar) page; saved to config/support_url.txt")
     ap.add_argument("--top-streets", type=int, default=4000, help="number of hotspot street pieces to include")
     args = ap.parse_args()
     for p in (CONTEXT, HOT):
@@ -235,7 +237,15 @@ def main():
         ai_file.write_text(args.ai_url.strip() + "\n", encoding="utf-8")
     ai_url = ai_file.read_text(encoding="utf-8").strip() if ai_file.exists() else ""
     log(f"== AI assistant: {'on, using ' + ai_url if ai_url else 'off (no config/ai_endpoint.txt); visitors see an unavailable message'}")
+    sup_file = CFG / "support_url.txt"
+    if args.support_url:
+        CFG.mkdir(exist_ok=True)
+        sup_file.write_text(args.support_url.strip() + "\n", encoding="utf-8")
+    support_url = sup_file.read_text(encoding="utf-8").strip() if sup_file.exists() else ""
+    if support_url:
+        log(f"== Support link: {support_url}")
     meta = {"built": datetime.date.today().strftime("%d %B %Y"), "years": years, "boroughs": boroughs, "ai_url": ai_url,
+            "support_url": support_url,
             "repo": args.repo or git_remote(), "has_model": has_model and bool(model), "has_access": has_access,
             "n_lsoa": int(len(lsoa))}
     write_js("meta", meta)

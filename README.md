@@ -148,6 +148,7 @@ The dashboard has:
 - casualties by hour of the day
 - a **spotlight**: a circle (250 m, 500 m or 1 km) you can drag anywhere, which dims the rest of the map and summarises the casualties inside it (killed or seriously injured, children, by year, by hour, typical drive to trauma care, and the street stretches where serious injuries concentrate)
 - **Play the years**: steps through 2021–2025, one year at a time, with the casualties of each year on the map
+- **Download as CSV**: the casualties inside the spotlight, in a selected borough, or behind any Ask the data answer, with year, hour, severity, age, borough, location and drive times
 - four map views of London's small areas: hot and cold spots, more casualties than expected, casualties per km², and drive time to trauma care
 - the most dangerous street stretches, individual casualties when zoomed in, and hospitals with A&E
 - a borough panel with rankings three ways, typical drive time to trauma care and the streets where serious injuries concentrate
@@ -163,6 +164,8 @@ The dashboard's **Ask the data** box lets visitors ask questions in plain Englis
 - **Transparent:** every answer starts with "I read this as…" and restates exactly what was counted, with caveats where they matter (rates per resident, the 2021 lockdown, associations not causes).
 - **Safe and cheap:** the API key stays in Cloudflare; the relay only serves this dashboard and limits use per visitor and per day; prepaid credit with auto-reload off means cost can't run away. Without it, visitors see a clear "currently unavailable" message and use the dashboard as normal.
 - **Tested** with simulated Claude replies, including invalid and malicious ones, and every failure mode (no credit, busy, limits, network down).
+
+- **Optional support link:** a "buy me a coffee" line under the Ask box helps cover running costs.
 
 Setup takes about 20 minutes in a browser: see [`ai/SETUP.md`](ai/SETUP.md).
 
