@@ -127,6 +127,37 @@
     text-shadow: 0 0 2px #fff, 0 0 8px #fff, 0 0 14px #fff; letter-spacing: -0.02em; }
   .yearbadge small { display: block; font-family: var(--body); font-weight: 700; font-size: 15px; letter-spacing: 0; margin-top: 4px; }
 
+  /* ---------- ask the data ---------- */
+  #asksec { margin-top: 22px; padding: 16px 16px 14px; border: 1.5px solid var(--asphalt); border-radius: 8px; background: var(--white); }
+  #asksec h2 { margin-bottom: 4px; }
+  #asksec .hint { margin-bottom: 10px; }
+  .askrow { display: flex; gap: 8px; }
+  .askrow input { flex: 1; min-width: 0; font-size: 15px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--kerb); }
+  .askrow input:disabled { opacity: .6; }
+  .askrow button { border: 0; background: var(--asphalt); color: var(--white); border-radius: 6px; padding: 0 16px; font-weight: 700; cursor: pointer; }
+  .askrow button:disabled { opacity: .5; cursor: default; }
+  .askex { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .askex button { border: 1px dashed var(--line); background: var(--kerb); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; text-align: left; }
+  .askex button:hover { border-color: var(--asphalt); }
+  .ask-unavailable { margin: 12px 0 0; padding: 10px 12px; background: #FFF4DB; border: 1px solid #E8C779; border-radius: 6px; font-size: 14px; }
+  .ask-thinking { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+  .ans { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .ans-read { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+  .ans-read i { color: var(--asphalt); font-style: normal; font-weight: 700; }
+  .ans-text { font-size: 15.5px; margin: 0 0 8px; }
+  .ans-text b { font-family: var(--display); font-weight: 800; }
+  .ans-text b.ksi { color: var(--injury); }
+  .ans-list { list-style: none; margin: 6px 0 4px; padding: 0; }
+  .ans-list li { display: grid; grid-template-columns: 1fr 74px; gap: 8px; align-items: center; padding: 3px 0; font-size: 13.5px; }
+  .ans-list .lab button { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; text-decoration: underline;
+    text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .ans-list .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ans-list .bar { grid-column: 1 / 3; height: 5px; background: var(--kerb); border-radius: 3px; overflow: hidden; }
+  .ans-list .bar i { display: block; height: 100%; background: var(--asphalt); }
+  .ans-note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .ans-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .ans-foot button { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+
   /* ---------- brand ---------- */
   .brand { position: absolute; z-index: 800; left: 10px; bottom: 8px; font-family: var(--display); font-weight: 800;
     font-size: 15px; letter-spacing: 0.02em; color: var(--white); background: var(--asphalt); padding: 3px 9px 2px;
@@ -165,7 +196,7 @@
 </style>
 </head>
 <body>
-<main id="map" aria-label="Map of pedestrian casualties in London"><div class="zoomnote" id="zoomnote">Zoom in to see individual casualties</div><div class="yearbadge" id="yearbadge" aria-live="polite"></div><a class="brand" id="brand" href="https://github.com/eritrouib" target="_blank" rel="noopener" title="Made by Eriola Trungu">@ET</a></main>
+<main id="map" aria-label="Map of pedestrian casualties in London"><div class="zoomnote" id="zoomnote">Zoom in to see individual casualties</div><div class="yearbadge" id="yearbadge" aria-live="polite"></div><a class="brand" id="brand" href="https://github.com/eritrouib" target="_blank" rel="noopener" title="Made by Eriola Trungu Impersimi">@ET</a></main>
 
 <aside id="panel">
   <header>
@@ -175,6 +206,20 @@
     <p class="scope" id="scope"></p>
     <div class="problem" id="problem" hidden></div>
   </header>
+
+  <section id="asksec" aria-labelledby="ask-h">
+    <h2 id="ask-h">Ask the data</h2>
+    <p class="hint">Ask a question in plain English. AI turns it into a query, and every number is computed from the data itself.</p>
+    <form id="askform" autocomplete="off">
+      <div class="askrow">
+        <label for="askq" style="position:absolute;left:-9999px">Your question</label>
+        <input id="askq" maxlength="300" placeholder="e.g. Which boroughs are most dangerous per km of road?">
+        <button type="submit" id="askbtn">Ask</button>
+      </div>
+    </form>
+    <div class="askex" id="askex"></div>
+    <div id="askout" aria-live="polite"></div>
+  </section>
 
   <section id="filters">
     <h2>Which casualties</h2>
@@ -254,7 +299,7 @@
     <p><b>Most dangerous street stretches</b> use a kernel density along the street network (250 m), so clusters stay on the street where they happened. <b>Hot and cold spots</b> use Getis-Ord Gi* with 999 permutations. <b>More than expected</b> compares each area with a negative binomial model, corrected for multiple testing. <b>Drive times</b> assume free-flowing traffic.</p>
     <p>Minor pedestrian injuries are under-reported to the police, and associations between areas and casualties do not show cause.</p>
     <p id="repo"></p>
-    <p>Made by <b>Eriola Trungu</b> &middot; @ET</p>
+    <p>Made by <b>Eriola Trungu Impersimi</b> &middot; @ET</p>
     <p style="color:var(--muted);font-size:12.5px">Contains DfT, ONS, MHCLG and NHS data (Open Government Licence) and OpenStreetMap data (© OpenStreetMap contributors, ODbL). Basemap © Esri. <span id="built"></span></p>
   </section>
 </aside>
@@ -812,6 +857,337 @@
     boroughPanel(current);
     drawSpot();
     drawPoints();
+  }
+
+
+  // ---------- ask the data (AI) ----------
+  // The AI only translates a question into a query. Every number below is computed here, from the data.
+  var AI = { url: META.ai_url || "", busy: false };
+  var UNAVAILABLE = "The AI assistant is currently unavailable. You can still explore everything with the filters and map below.";
+  var AI_MESSAGES = {
+    unavailable: UNAVAILABLE,
+    busy: "The AI assistant is busy right now. Please try again in a minute, or use the filters and map below.",
+    visitor_limit: "You've reached today's limit of questions. Please come back tomorrow, or keep exploring with the filters and map below.",
+    daily_cap: "The AI assistant has answered all the questions it can for today. Please come back tomorrow, or use the filters and map below."
+  };
+  var EXAMPLES = [
+    "Most dangerous boroughs per km of road?",
+    "Serious casualties by year",
+    "When are older pedestrians most at risk?",
+    "Serious injuries near Oxford Circus",
+    "What street features go with more casualties?"
+  ];
+  var askOut = el("askout"), askQ = el("askq"), askBtn = el("askbtn");
+  EXAMPLES.forEach(function (q) {
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = q;
+    b.addEventListener("click", function () { askQ.value = q; ask(q); });
+    el("askex").appendChild(b);
+  });
+  if (!AI.url) {
+    askQ.disabled = true; askBtn.disabled = true;
+    el("askex").querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+    askOut.innerHTML = '<p class="ask-unavailable">' + UNAVAILABLE + "</p>";
+  }
+  el("askform").addEventListener("submit", function (e) { e.preventDefault(); ask(askQ.value); });
+
+  var BOROUGH_IDX = {};
+  BOROUGHS.forEach(function (b, i) { BOROUGH_IDX[b] = i; });
+  function intIn(v, lo, hi) { v = Math.round(+v); return isFinite(v) && v >= lo && v <= hi ? v : null; }
+  function clean(q) {
+    q = q || {};
+    var out = {
+      answerable: q.answerable !== false,
+      reason: typeof q.reason === "string" ? q.reason.slice(0, 300) : "",
+      interpretation: typeof q.interpretation === "string" ? q.interpretation.slice(0, 300) : "",
+      task: ["summary", "by_borough", "by_year", "by_hour", "by_age", "top_streets", "access_to_care", "model_findings"]
+        .indexOf(q.task) > -1 ? q.task : "summary",
+      severity: ["all", "ksi", "fatal", "serious", "slight"].indexOf(q.severity) > -1 ? q.severity : "all",
+      years: (Array.isArray(q.years) ? q.years : []).map(Number).filter(function (y) { return META.years.indexOf(y) > -1; }),
+      hour_from: intIn(q.hour_from, 0, 23), hour_to: intIn(q.hour_to, 0, 23),
+      age_min: intIn(q.age_min, 0, 120), age_max: intIn(q.age_max, 0, 120),
+      boroughs: (Array.isArray(q.boroughs) ? q.boroughs : []).filter(function (b) { return b in BOROUGH_IDX; }).slice(0, 33),
+      place: typeof q.place === "string" ? q.place.slice(0, 120) : "",
+      place_lat: +q.place_lat, place_lon: +q.place_lon,
+      radius_m: intIn(q.radius_m, 100, 3000) || 500,
+      metric: ["count", "per_100k_residents", "per_km_road"].indexOf(q.metric) > -1 ? q.metric : "count",
+      order: q.order === "asc" ? "asc" : "desc",
+      top_n: intIn(q.top_n, 1, 33) || 5
+    };
+    if (out.hour_from != null && out.hour_to == null) out.hour_to = out.hour_from;
+    if (out.hour_to != null && out.hour_from == null) out.hour_from = out.hour_to;
+    if (out.age_min != null && out.age_max == null) out.age_max = 120;
+    if (out.age_max != null && out.age_min == null) out.age_min = 0;
+    return out;
+  }
+
+  // where is the place? postcode -> postcodes.io; name -> OpenStreetMap (London only); else the AI's estimate
+  var LONDON = { s: 51.28, n: 51.70, w: -0.52, e: 0.34 };
+  function inLondon(lat, lon) { return lat > LONDON.s && lat < LONDON.n && lon > LONDON.w && lon < LONDON.e; }
+  function geocode(q) {
+    if (!q.place) return Promise.resolve(null);
+    var pc = q.place.match(/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i);
+    var guess = inLondon(q.place_lat, q.place_lon) ? { lat: q.place_lat, lon: q.place_lon, label: q.place, approx: true } : null;
+    var p = pc
+      ? fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(pc[0].replace(/\s/g, ""))).then(function (r) { return r.json(); })
+          .then(function (j) { return j && j.result ? { lat: j.result.latitude, lon: j.result.longitude, label: j.result.postcode } : null; })
+      : fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&bounded=1&viewbox=" +
+          [LONDON.w, LONDON.n, LONDON.e, LONDON.s].join(",") + "&q=" + encodeURIComponent(q.place))
+          .then(function (r) { return r.json(); })
+          .then(function (j) { return j && j[0] ? { lat: +j[0].lat, lon: +j[0].lon, label: j[0].display_name.split(",").slice(0, 2).join(",") } : null; });
+    return p.then(function (g) { return g && inLondon(g.lat, g.lon) ? g : guess; }, function () { return guess; });
+  }
+
+  function pick(q, geo, ignoreBorough) {
+    var out = [], cos = geo ? Math.cos(geo.lat * Math.PI / 180) : 1, r2 = q.radius_m * q.radius_m;
+    var ys = q.years.length ? q.years : META.years, bset = {};
+    q.boroughs.forEach(function (b) { bset[BOROUGH_IDX[b]] = 1; });
+    var useB = q.boroughs.length && !ignoreBorough;
+    for (var i = 0; i < N; i++) {
+      var s = C.sev[i];
+      if (q.severity === "ksi" && s > 1) continue;
+      if (q.severity === "fatal" && s !== 0) continue;
+      if (q.severity === "serious" && s !== 1) continue;
+      if (q.severity === "slight" && s !== 2) continue;
+      if (ys.indexOf(C.year[i]) < 0) continue;
+      if (q.hour_from != null) {
+        var h = C.hour[i];
+        if (h < 0) continue;
+        if (q.hour_from <= q.hour_to ? (h < q.hour_from || h > q.hour_to) : (h < q.hour_from && h > q.hour_to)) continue;
+      }
+      if (q.age_min != null && (C.age[i] < 0 || C.age[i] < q.age_min || C.age[i] > q.age_max)) continue;
+      if (useB && !bset[C.b[i]]) continue;
+      if (geo) {
+        var dy = (C.lat[i] - geo.lat) * KM_LAT, dx = (C.lon[i] - geo.lon) * KM_LON * cos;
+        if (dx * dx + dy * dy > r2) continue;
+      }
+      out.push(i);
+    }
+    return out;
+  }
+
+  // describe exactly what was computed, from the checked query (not from the AI's own wording)
+  function sevWord(q) {
+    var who = "pedestrians";
+    if (q.age_min != null) {
+      who = q.age_min === 0 && q.age_max <= 15 ? "children under 16" : q.age_min >= 65 ? "pedestrians aged 65 and over"
+        : q.age_max >= 100 ? "pedestrians aged " + q.age_min + " and over" : "pedestrians aged " + q.age_min + "–" + q.age_max;
+    }
+    var s = { ksi: who + " killed or seriously injured", fatal: who + " killed", serious: who + " seriously injured",
+      slight: who + " slightly injured" }[q.severity];
+    if (!s) s = who === "pedestrians" ? "pedestrian casualties" : who + " injured";
+    if (q.hour_from != null) {
+      var hh = function (h) { return String(h).padStart(2, "0"); };
+      s += " between " + hh(q.hour_from) + ":00 and " + hh(q.hour_to) + ":59" + (q.hour_from > q.hour_to ? " (overnight)" : "");
+    }
+    return s;
+  }
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function listHtml(rows, fmtv, max, onClick) {
+    max = max || Math.max.apply(null, rows.map(function (r) { return r.v; })) || 1;
+    return '<ul class="ans-list">' + rows.map(function (r, i) {
+      var lab = onClick ? '<button type="button" data-i="' + i + '">' + esc(r.label) + "</button>" : esc(r.label);
+      return '<li><span class="lab">' + lab + '</span><span class="v">' + esc(fmtv(r.v)) + '</span><span class="bar"><i style="width:' +
+        Math.max(2, 100 * r.v / max) + '%"></i></span></li>';
+    }).join("") + "</ul>";
+  }
+  function nYears(q) { return (q.years.length ? q.years : META.years).length; }
+
+  function compute(q, geo) {
+    var res = { text: "", list: "", note: "", after: null, n: 0 };
+    var sel = pick(q, geo);
+    res.n = sel.length;
+    var where = geo ? " within " + (q.radius_m >= 1000 ? q.radius_m / 1000 + " km" : q.radius_m + " m") + " of " + esc(geo.label)
+      : q.boroughs.length === 1 ? " in " + esc(q.boroughs[0]) : q.boroughs.length > 1 ? " in the " + q.boroughs.length + " boroughs" : " in London";
+    var ys = q.years.length ? q.years : META.years;
+    var span = ys.length > 1 ? Math.min.apply(null, ys) + "–" + Math.max.apply(null, ys) : String(ys[0]);
+
+    if (q.task === "summary") {
+      var k = 0, f = 0, kids = 0, mt = [];
+      sel.forEach(function (i) { if (C.sev[i] <= 1) { k++; if (C.mt && C.mt[i] != null) mt.push(C.mt[i]); } if (C.sev[i] === 0) f++; if (C.age[i] >= 0 && C.age[i] < 16) kids++; });
+      res.text = "<b>" + fmt.format(sel.length) + "</b> " + sevWord(q) + where + ", " + span + ".";
+      if (q.severity === "all") res.text += " <b class='ksi'>" + fmt.format(k) + "</b> were killed or seriously injured, including <b class='ksi'>" + fmt.format(f) + "</b> " + (f === 1 ? "death" : "deaths") + ".";
+      else if (q.severity === "ksi") res.text += " That includes <b class='ksi'>" + fmt.format(f) + "</b> " + (f === 1 ? "death" : "deaths") + ".";
+      if (q.age_min == null && kids) res.text += " " + fmt.format(kids) + (kids === 1 ? " was a child" : " were children") + " under 16.";
+      var m = median(mt);
+      if (m != null && k >= 5) res.text += " Half of the seriously injured were within " + num(m, 0) + " minutes' drive of a major trauma centre.";
+    }
+    else if (q.task === "by_borough") {
+      var all = pick(q, geo, true), counts = BOROUGHS.map(function () { return 0; });
+      all.forEach(function (i) { if (C.b[i] >= 0) counts[C.b[i]]++; });
+      var rows = BOROUGHS.map(function (b, j) {
+        var p = boroughLayer[b] ? boroughLayer[b].feature.properties : {}, v = counts[j];
+        if (q.metric === "per_100k_residents") v = p.pop ? 1e5 * counts[j] / p.pop / nYears(q) : null;
+        if (q.metric === "per_km_road") { var km = p.ksi_road ? p.ksi / (p.ksi_road * META.years.length) : null; v = km ? counts[j] / km / nYears(q) : null; }
+        return { label: b, v: v };
+      }).filter(function (r) { return r.v != null && (!q.boroughs.length || q.boroughs.indexOf(r.label) > -1); });
+      rows.sort(function (a, b) { return q.order === "asc" ? a.v - b.v : b.v - a.v; });
+      var unit = { count: "", per_100k_residents: " per 100,000 residents a year", per_km_road: " per km of road a year" }[q.metric];
+      var d = q.metric === "count" ? 0 : q.metric === "per_km_road" ? 3 : 1;
+      var top = rows.slice(0, q.top_n);
+      if (top.length) {
+        res.text = (q.order === "asc" ? "Lowest" : "Highest") + ": <b>" + esc(top[0].label) + "</b>, with <b>" + num(top[0].v, d) + "</b> " + sevWord(q) + unit + " (" + span + ").";
+        res.list = listHtml(top, function (v) { return num(v, d); }, null, true);
+        res.after = function (ul) {
+          ul.querySelectorAll("button").forEach(function (btn) { btn.addEventListener("click", function () { setBorough(top[+btn.dataset.i].label, true); }); });
+        };
+        if (q.metric === "count") res.note = "Raw counts favour large, busy boroughs. Ask per km of road or per resident for a fairer comparison.";
+        if (q.metric === "per_100k_residents") res.note = "Rates per resident overstate central areas such as the City of London, where far more people walk than live.";
+      }
+    }
+    else if (q.task === "by_year") {
+      var byY = ys.slice().sort().map(function (y) { return { label: String(y), v: 0 }; });
+      sel.forEach(function (i) { byY.forEach(function (r) { if (+r.label === C.year[i]) r.v++; }); });
+      res.list = listHtml(byY, function (v) { return fmt.format(v); });
+      if (byY.length > 1) {
+        var a = byY[0], z = byY[byY.length - 1], ch = a.v ? 100 * (z.v - a.v) / a.v : null;
+        res.text = cap(sevWord(q)) + where + ": <b>" + fmt.format(a.v) + "</b> in " + a.label +
+          " and <b>" + fmt.format(z.v) + "</b> in " + z.label + (ch != null ? " (" + (ch >= 0 ? "up " : "down ") + num(Math.abs(ch), 0) + "%)." : ".");
+        if (+a.label === 2021) res.note = "2021 was affected by the early-2021 lockdown, so it's a low starting point.";
+      }
+    }
+    else if (q.task === "by_hour") {
+      var byH = []; for (var h = 0; h < 24; h++) byH.push({ label: String(h).padStart(2, "0") + ":00", v: 0 });
+      sel.forEach(function (i) { if (C.hour[i] >= 0) byH[C.hour[i]].v++; });
+      var peak = byH.slice().sort(function (a, b) { return b.v - a.v; })[0];
+      res.text = "The busiest hour for " + sevWord(q) + where + " is around <b>" + peak.label + "</b> (" + fmt.format(peak.v) + " of " + fmt.format(sel.length) + ").";
+      res.list = bars(byH.map(function (r) { return r.v; }), null, "#B3261E", 46, function () { return true; }) +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>midnight</span><span>noon</span><span>11pm</span></div>';
+    }
+    else if (q.task === "by_age") {
+      var groups = [["Children (under 16)", 0, 15], ["16–24", 16, 24], ["25–64", 25, 64], ["65 and over", 65, 150]];
+      var rowsA = groups.map(function (g) { return { label: g[0], v: 0 }; }), unknown = 0;
+      sel.forEach(function (i) { var a = C.age[i]; if (a < 0) { unknown++; return; } for (var j = 0; j < groups.length; j++) if (a >= groups[j][1] && a <= groups[j][2]) { rowsA[j].v++; break; } });
+      var big = rowsA.slice().sort(function (a, b) { return b.v - a.v; })[0];
+      res.text = "Of " + fmt.format(sel.length) + " " + sevWord(q) + where + ", the largest group is <b>" + big.label + "</b> (" + num(100 * big.v / Math.max(sel.length, 1), 0) + "%).";
+      res.list = listHtml(rowsA, function (v) { return fmt.format(v); });
+      if (unknown) res.note = fmt.format(unknown) + " casualties have no age recorded. Shares reflect who was injured, not risk per person: there are far more adults than children on the streets.";
+    }
+    else if (q.task === "top_streets") {
+      var named = {};
+      if (geo) {
+        var c2 = Math.cos(geo.lat * Math.PI / 180), rr = Math.max(q.radius_m, 500);
+        (D.streets || []).forEach(function (st) {
+          if (!st.n) return;
+          var c0 = st.c[0], dy = (c0[0] - geo.lat) * KM_LAT, dx = (c0[1] - geo.lon) * KM_LON * c2;
+          if (dx * dx + dy * dy <= rr * rr && (!named[st.n] || named[st.n].v < st.d)) named[st.n] = { label: st.n, v: st.d, ll: c0 };
+        });
+      } else if (q.boroughs.length) {
+        q.boroughs.forEach(function (b) { ((D.topstreets || {})[b] || []).forEach(function (t) {
+          if (!named[t.n] || named[t.n].v < t.d) named[t.n] = { label: t.n + (q.boroughs.length > 1 ? " (" + b + ")" : ""), v: t.d, ll: t.ll }; }); });
+      } else {
+        (D.streets || []).forEach(function (st) { if (st.n && (!named[st.n] || named[st.n].v < st.d)) named[st.n] = { label: st.n, v: st.d, ll: st.c[0] }; });
+      }
+      var rowsS = Object.keys(named).map(function (k) { return named[k]; }).sort(function (a, b) { return b.v - a.v; }).slice(0, Math.min(q.top_n, 10));
+      if (rowsS.length) {
+        res.text = "Serious injuries concentrate most on <b>" + esc(rowsS[0].label) + "</b>" + where + ".";
+        res.list = listHtml(rowsS, function (v) { return num(v, 2); }, null, true);
+        res.after = function (ul) { ul.querySelectorAll("button").forEach(function (btn) { btn.addEventListener("click", function () {
+          var t = rowsS[+btn.dataset.i]; REDUCED ? map.setView(t.ll, 16) : map.flyTo(t.ll, 16, { duration: 0.9 }); }); }); };
+        res.note = "Values are killed or seriously injured casualties a year within 250 m along the street, across all years. Click a street to fly there.";
+      } else {
+        res.text = "None of the most dangerous street stretches fall" + where + ".";
+      }
+    }
+    else if (q.task === "access_to_care") {
+      if (!C.mt) { res.text = "Drive times to trauma care aren't included in this version of the dashboard."; }
+      else {
+        var t = sel.map(function (i) { return C.mt[i]; }).filter(function (v) { return v != null; }).sort(function (a, b) { return a - b; });
+        var within = function (m) { return 100 * t.filter(function (v) { return v < m; }).length / Math.max(t.length, 1); };
+        res.text = "For " + fmt.format(t.length) + " " + sevWord(q) + where + ", the typical free-flow drive to a major trauma centre is <b>" + num(median(t), 0) + " minutes</b>.";
+        res.list = listHtml([10, 15, 20, 30].map(function (m) { return { label: "Within " + m + " minutes", v: within(m) }; }), function (v) { return num(v, 0) + "%"; }, 100);
+        res.note = "Free-flowing traffic, from the scene to hospital. Real journeys at busy times take longer.";
+      }
+    }
+    else if (q.task === "model_findings") {
+      var outcome = q.severity === "all" ? "All pedestrian casualties" : "Fatal + serious";
+      var rowsM = (D.model || []).filter(function (r) { return r.outcome === outcome && r.p_value < 0.05; })
+        .sort(function (a, b) { return Math.abs(b.pct_change) - Math.abs(a.pct_change); });
+      if (!rowsM.length) { res.text = "The model's results aren't included in this version of the dashboard."; }
+      else {
+        var up = rowsM.filter(function (r) { return r.pct_change > 0; });
+        res.text = "Once how busy an area is has been taken into account, the strongest associations with more " +
+          (outcome === "Fatal + serious" ? "serious casualties" : "casualties") + " are <b>" + up.slice(0, 2).map(function (r) { return esc(r.label.toLowerCase()); }).join("</b> and <b>") + "</b>.";
+        res.list = '<ul class="ans-list">' + rowsM.map(function (r) {
+          return '<li><span class="lab">' + esc(r.label) + '</span><span class="v">' + (r.pct_change > 0 ? "+" : "") + num(r.pct_change, 0) + "%</span></li>"; }).join("") + "</ul>";
+        res.note = "Change in casualties per km of road for an area one standard deviation higher on each feature. These are associations, not causes: crossings and signals, for example, are often added where collisions have happened.";
+        res.n = null;
+      }
+    }
+    return res;
+  }
+
+  function spotAt(ll, r) {
+    SPOT.r = r;
+    el("spot-r").querySelectorAll("button").forEach(function (o) { o.setAttribute("aria-pressed", +o.dataset.v === r ? "true" : "false"); });
+    SPOT.c = L.latLng(ll);
+    if (!SPOT.on) setSpot(true); else placeSpot(SPOT.c);
+    var z = r <= 300 ? 16 : r <= 700 ? 15 : r <= 1500 ? 14 : 13;
+    REDUCED ? map.setView(SPOT.c, z) : map.flyTo(SPOT.c, z, { duration: 0.9 });
+  }
+  function applyToMap(q, geo) {
+    var notes = [];
+    if (playing) stopPlay(false);
+    S.sev = q.severity === "fatal" || q.severity === "ksi" ? q.severity : "all";
+    el("sev").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === S.sev ? "true" : "false"); });
+    S.years = new Set(q.years.length ? q.years : META.years);
+    syncYearChips();
+    var tod = "any", age = "any";
+    if (q.hour_from != null) { Object.keys(TOD).forEach(function (k) { if (TOD[k] && TOD[k][0] === q.hour_from && TOD[k][1] === q.hour_to) tod = k; }); if (tod === "any") notes.push("time of day"); }
+    if (q.age_min != null) { Object.keys(AGE).forEach(function (k) { if (AGE[k] && AGE[k][0] === q.age_min && (AGE[k][1] === q.age_max || (k === "older" && q.age_max >= 100))) age = k; }); if (age === "any") notes.push("age"); }
+    if (q.severity === "serious" || q.severity === "slight") notes.push("severity");
+    S.tod = tod; S.age = age;
+    el("tod").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === tod ? "true" : "false"); });
+    el("age").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === age ? "true" : "false"); });
+    if (geo) spotAt([geo.lat, geo.lon], q.radius_m);
+    else if (SPOT.on) setSpot(false);
+    if (!geo && q.boroughs.length === 1) setBorough(q.boroughs[0], true);
+    else { if (!geo && S.borough) setBorough("", false); update(); }
+    return notes;
+  }
+
+  function showMessage(html, cls) { askOut.innerHTML = '<p class="' + (cls || "ask-unavailable") + '">' + html + "</p>"; }
+  function ask(question) {
+    question = String(question || "").trim();
+    if (!question || AI.busy) return;
+    if (!AI.url) { showMessage(UNAVAILABLE); return; }
+    AI.busy = true; askBtn.disabled = true;
+    showMessage("Reading your question…", "ask-thinking");
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
+    fetch(AI.url, { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl ? ctrl.signal : undefined,
+      body: JSON.stringify({ question: question, years: META.years }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j.query) { showMessage(AI_MESSAGES[res.j.error] || UNAVAILABLE); return; }
+        var q = clean(res.j.query);
+        if (!q.answerable) {
+          showMessage(esc(q.reason || "The data can't answer that one.") + " Try one of the example questions.", "ask-thinking");
+          return;
+        }
+        showMessage("Computing from the data…", "ask-thinking");
+        return geocode(q).then(function (geo) {
+          if (q.place && !geo) {
+            showMessage("I couldn't find “" + esc(q.place) + "” in London. Try a postcode, station or street name.", "ask-thinking");
+            return;
+          }
+          var r = compute(q, geo);
+          var mapNotes = applyToMap(q, geo);
+          var html = '<div class="ans"><p class="ans-read">I read this as: <i>' + esc(q.interpretation || question) + "</i>" +
+            (geo ? " Location: " + esc(geo.label) + (geo.approx ? " (approximate)" : "") + "." : "") + "</p>" +
+            '<p class="ans-text">' + r.text + "</p>" + r.list +
+            (r.note ? '<p class="ans-note">' + r.note + "</p>" : "") +
+            (mapNotes.length ? '<p class="ans-note">The map shows the closest match; the ' + mapNotes.join(" and ") + " filter is applied in this answer only.</p>" : "") +
+            '<div class="ans-foot"><span>' + (r.n != null ? "Computed from " + fmt.format(r.n) + " police-recorded casualties." : "From the model in step 4 of the analysis.") +
+            '</span><button type="button" id="ans-clear">Clear</button></div></div>';
+          askOut.innerHTML = html;
+          var ul = askOut.querySelector(".ans-list");
+          if (r.after && ul) r.after(ul);
+          el("ans-clear").addEventListener("click", function () { askOut.innerHTML = ""; askQ.value = ""; askQ.focus(); });
+        });
+      })
+      .catch(function () { showMessage(UNAVAILABLE); })
+      .then(function () { clearTimeout(timer); AI.busy = false; askBtn.disabled = false; });
   }
 
   el("scope").textContent = fmt.format(N) + " police-recorded pedestrian casualties, " + META.years[0] + "–" +

@@ -16,7 +16,7 @@ A spatial analysis and interactive dashboard built entirely on open data and ope
 | 4 | Built environment model (negative binomial, geographically weighted) | Done |
 | 5 | Access to care: network travel time to A&E and major trauma centres | Done |
 | 6 | Interactive dashboard | Done |
-| 7 | AI layer: plain-English questions answered by tested spatial queries | Planned |
+| 7 | AI assistant: plain-English questions answered by tested queries on the data | Done (switch on with `ai/SETUP.md`) |
 
 ## Getting started
 
@@ -155,6 +155,17 @@ The dashboard has:
 
 **Publishing:** push to GitHub, then in the repository go to *Settings → Pages*, choose *Deploy from a branch*, branch `main`, folder `/docs`. The dashboard appears at `https://<your-username>.github.io/london-pedestrian-safety/` within a few minutes. Re-run the script and push again to update it.
 
+### Step 7: Ask the data (AI assistant)
+
+The dashboard's **Ask the data** box lets visitors ask questions in plain English, such as *"When are older pedestrians most at risk?"* or *"Serious injuries near Oxford Circus"*.
+
+- **The AI translates; the data calculates.** A small relay (`ai/worker.js`, a free Cloudflare Worker) asks Claude Haiku 4.5 to turn the question into a structured query using tool calling. The dashboard validates every field against a fixed list, computes the numbers from the data in the browser, and moves the map, filters and spotlight to match.
+- **Transparent:** every answer starts with "I read this as…" and restates exactly what was counted, with caveats where they matter (rates per resident, the 2021 lockdown, associations not causes).
+- **Safe and cheap:** the API key stays in Cloudflare; the relay only serves this dashboard and limits use per visitor and per day; prepaid credit with auto-reload off means cost can't run away. Without it, visitors see a clear "currently unavailable" message and use the dashboard as normal.
+- **Tested** with simulated Claude replies, including invalid and malicious ones, and every failure mode (no credit, busy, limits, network down).
+
+Setup takes about 20 minutes in a browser: see [`ai/SETUP.md`](ai/SETUP.md).
+
 ## Data
 
 | Dataset | Publisher | Licence |
@@ -176,4 +187,4 @@ The dashboard has:
 
 ## Tools
 
-Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda, mgwr), SciPy and statsmodels for the analysis; Leaflet for the dashboard. All open source.
+Python, pandas, GeoPandas, OSMnx, PySAL (libpysal, esda, mgwr), SciPy and statsmodels for the analysis; Leaflet for the dashboard; Claude (Anthropic API) via a Cloudflare Worker for the AI assistant. The analysis uses only open data and open-source tools.
